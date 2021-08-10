@@ -70,25 +70,27 @@ func (agent *AutonomousAgent) GetInbox() chan Msg {
 	return agent.inbox
 }
 
-// Consumes inbox and emits to outbox
+// Consumes messages from the inbox and runs the particular handler message type
 func (agent *AutonomousAgent) consumeInbox() {
 	for msg := range agent.inbox {
 
 		log.Printf("recived message of type: %s and message: %s", msg.Type, msg.Message)
 
-		go func() {
-			// Get the handler for this particular message type
-			if handler, ok := agent.handlers[msg.Type]; ok {
-				select {
-				case <-agent.ctx.Done():
-					log.Printf("unsubcribing from inbox")
-					return
+		select {
+		case <-agent.ctx.Done():
+			log.Printf("unsubcribing from inbox")
+			return
+		default:
+			go func() {
+				// Get the handler for this particular message type
+				if handler, ok := agent.handlers[msg.Type]; ok {
 
-				default:
 					go handler(msg, agent.errCh, agent.ctx)
+
 				}
-			}
-		}()
+			}()
+		}
+
 	}
 }
 
